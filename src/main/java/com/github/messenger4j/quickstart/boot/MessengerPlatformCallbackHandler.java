@@ -197,6 +197,10 @@ public class MessengerPlatformCallbackHandler {
                         sendTypingOff(senderId);
                         break;
 
+                    case "jose":
+                    	sendTextMessage(senderId, "Jose es el puto amo");
+                    	break;
+
                     /*
                     case "account linking":
                         sendAccountLinking(senderId);

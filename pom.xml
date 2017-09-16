@@ -8,13 +8,13 @@
 	<version>1.0.2</version>
 	<packaging>jar</packaging>
 
-	<name>${project.groupId}:${project.artifactId}</name>
+	<name>Messenger4j - Spring Boot</name>
 	<description>Facebook Messenger Chatbot Template using Java, Spring Boot, and messenger4j</description>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>1.4.2.RELEASE</version>
+		<version>1.5.7.RELEASE</version>
 	</parent>
 
 	<properties>
