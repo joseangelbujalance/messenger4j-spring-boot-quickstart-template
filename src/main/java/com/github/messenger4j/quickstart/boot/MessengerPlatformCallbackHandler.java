@@ -5,6 +5,11 @@ import static com.github.messenger4j.MessengerPlatform.MODE_REQUEST_PARAM_NAME;
 import static com.github.messenger4j.MessengerPlatform.SIGNATURE_HEADER_NAME;
 import static com.github.messenger4j.MessengerPlatform.VERIFY_TOKEN_REQUEST_PARAM_NAME;
 
+import com.bujalance.mpg.api.LeaguesRequest;
+import com.bujalance.mpg.api.MatchDayResultsRequest;
+import com.bujalance.mpg.business.League;
+import com.bujalance.mpg.business.Leagues;
+import com.bujalance.mpg.business.MatchDayResults;
 import com.github.messenger4j.MessengerPlatform;
 import com.github.messenger4j.exceptions.MessengerApiException;
 import com.github.messenger4j.exceptions.MessengerIOException;
@@ -27,6 +32,7 @@ import com.github.messenger4j.receive.handlers.TextMessageEventHandler;
 import com.github.messenger4j.send.MessengerSendClient;
 import com.github.messenger4j.send.NotificationType;
 import com.github.messenger4j.send.QuickReply;
+import com.github.messenger4j.send.QuickReply.ListBuilder;
 import com.github.messenger4j.send.Recipient;
 import com.github.messenger4j.send.SenderAction;
 import com.github.messenger4j.send.buttons.Button;
@@ -34,6 +40,7 @@ import com.github.messenger4j.send.templates.ButtonTemplate;
 import com.github.messenger4j.send.templates.GenericTemplate;
 import com.github.messenger4j.send.templates.ReceiptTemplate;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,66 +156,12 @@ public class MessengerPlatformCallbackHandler {
 
             try {
                 switch (messageText.toLowerCase()) {
-                    case "image":
-                        sendImageMessage(senderId);
-                        break;
-
-                    case "gif":
-                        sendGifMessage(senderId);
-                        break;
-
-                    case "audio":
-                        sendAudioMessage(senderId);
-                        break;
-
-                    case "video":
-                        sendVideoMessage(senderId);
-                        break;
-
-                    case "file":
-                        sendFileMessage(senderId);
-                        break;
-
-                    case "button":
-                        sendButtonMessage(senderId);
-                        break;
-
-                    case "generic":
-                        sendGenericMessage(senderId);
-                        break;
-
-                    case "receipt":
-                        sendReceiptMessage(senderId);
-                        break;
-
-                    case "quick reply":
-                        sendQuickReply(senderId);
-                        break;
-
-                    case "read receipt":
-                        sendReadReceipt(senderId);
-                        break;
-
-                    case "typing on":
-                        sendTypingOn(senderId);
-                        break;
-
-                    case "typing off":
-                        sendTypingOff(senderId);
-                        break;
-
-                    case "jose":
-                    	sendTextMessage(senderId, "Jose es el puto amo");
-                    	break;
-
-                    /*
-                    case "account linking":
-                        sendAccountLinking(senderId);
-                        break;
-                    */
+                	case "/matchday":
+                		sendLeagueSelectionQuickReply(senderId);
+                		break;
 
                     default:
-                        sendTextMessage(senderId, messageText);
+                        sendTextMessage(senderId, "Don't know that command nigga");
                 }
             } catch (MessengerApiException | MessengerIOException e) {
                 handleSendException(e);
@@ -313,15 +266,18 @@ public class MessengerPlatformCallbackHandler {
         this.sendClient.sendTemplate(recipientId, receiptTemplate);
     }
 
-    private void sendQuickReply(String recipientId) throws MessengerApiException, MessengerIOException {
-        final List<QuickReply> quickReplies = QuickReply.newListBuilder()
-                .addTextQuickReply("Action", "DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_ACTION").toList()
-                .addTextQuickReply("Comedy", "DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_COMEDY").toList()
-                .addTextQuickReply("Drama", "DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_DRAMA").toList()
-                .addLocationQuickReply().toList()
-                .build();
-
-        this.sendClient.sendTextMessage(recipientId, "What's your favorite movie genre?", quickReplies);
+    private void sendLeagueSelectionQuickReply(String recipientId) throws MessengerApiException, MessengerIOException {
+        sendTypingOn(recipientId);
+        Leagues leagues = new LeaguesRequest().execute();
+        Iterator<League> iter = leagues.getLeagues().iterator();
+        ListBuilder listBuilder = QuickReply.newListBuilder();
+        while(iter.hasNext()) {
+        	League current = iter.next();
+        	listBuilder.addTextQuickReply(current.getName(), "league_" + current.getId()).toList();
+        }
+    	final List<QuickReply> quickReplies = listBuilder.build();
+        this.sendClient.sendTextMessage(recipientId, "Choose one of your leagues", quickReplies);
+        sendTypingOff(recipientId);
     }
 
     private void sendReadReceipt(String recipientId) throws MessengerApiException, MessengerIOException {
@@ -381,7 +337,24 @@ public class MessengerPlatformCallbackHandler {
             final String quickReplyPayload = event.getQuickReply().getPayload();
 
             logger.info("Received quick reply for message '{}' with payload '{}'", messageId, quickReplyPayload);
-
+            
+            String[] splited = quickReplyPayload.split("_");
+            try {
+            	switch(splited[0]) {
+            	case "league":
+            		sendTypingOn(senderId);
+            		MatchDayResults mdResults = new MatchDayResultsRequest(splited[1]).execute();
+            		sendTypingOff(senderId);
+            		sendTextMessage(senderId, mdResults.toString());
+            		break;
+            		
+            	default:
+            		sendTextMessage(senderId, "¿?");
+            	}
+            } catch (MessengerApiException | MessengerIOException e) {
+            	handleSendException(e);
+            }
+            
             sendTextMessage(senderId, "Quick reply tapped");
         };
     }
